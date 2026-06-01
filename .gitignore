@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.keystore
+keystore/
+
+# Build output
+dist/
+build/
+app/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Tooling caches
+.vite/
+.cache/
+.eslintcache
+
+# Editor / OS
+.DS_Store
+*.log
+.idea/
