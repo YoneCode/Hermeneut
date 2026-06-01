@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/main.js", "vite.config.js"],
+  "project": ["src/**/*.{js,ts,vue}"],
+  "ignore": ["dist/**", "public/**"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "postcss",
+    "autoprefixer",
+    "@vitejs/plugin-vue"
+  ]
+}
