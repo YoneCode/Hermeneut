@@ -39,9 +39,10 @@ export default class Hermeneut {
   /* ------------------------------ Reads ------------------------------ */
 
   async _read(functionName, args = []) {
-    // Bradbury rate-limits gen_call hard. Retry with longer backoff.
-    let delay = 800;
-    for (let attempt = 0; attempt < 6; attempt++) {
+    // Bradbury rate-limits gen_call hard (JSON-RPC code -32005). Retry with
+    // exponential backoff; matches both the message and the error code.
+    let delay = 700;
+    for (let attempt = 0; attempt < 8; attempt++) {
       try {
         return await this.client.readContract({
           address: this.contractAddress,
@@ -50,9 +51,13 @@ export default class Hermeneut {
         });
       } catch (e) {
         const msg = (e?.shortMessage || e?.message || "").toLowerCase();
-        if (attempt < 5 && msg.includes("rate limit")) {
+        const limited =
+          msg.includes("rate limit") ||
+          msg.includes("-32005") ||
+          msg.includes("exceeded");
+        if (attempt < 7 && limited) {
           await new Promise((r) => setTimeout(r, delay));
-          delay = Math.min(delay * 1.8, 6000);
+          delay = Math.min(delay * 1.7, 8000);
           continue;
         }
         throw e;
@@ -71,28 +76,19 @@ export default class Hermeneut {
   /**
    * Enumerate ALL commitments regardless of status. Ids are minted
    * contiguously, so we stop at the first GENUINELY empty slot.
-   * Errors (e.g. transient rate limits) are NOT treated as a gap — they
-   * propagate so the caller keeps prior data instead of showing a false
-   * "no commitments". Small parallel batches keep RPC concurrency low.
+   * Reads run STRICTLY SEQUENTIALLY with a small gap between calls — Bradbury
+   * rate-limits gen_call per method, so any concurrency trips -32005. Errors
+   * (after _read's retries) propagate so the caller keeps prior data instead
+   * of showing a false "no commitments".
    */
-  async listAllCommitments(max = 64, batch = 4) {
+  async listAllCommitments(max = 64) {
     const out = [];
-    for (let start = 0; start < max; start += batch) {
-      const ids = [];
-      for (let i = start; i < start + batch; i++) {
-        ids.push(`cmt_${i.toString(16).padStart(8, "0")}`);
-      }
-      // No per-call catch: a rejected read (after _read's retries) throws
-      // and aborts the whole refresh rather than masquerading as a gap.
-      const res = await Promise.all(
-        ids.map((id) => this._read("get_commitment", [id])),
-      );
-      let hitGap = false;
-      for (const c of res) {
-        if (c?.commitment_id) out.push(c);
-        else { hitGap = true; break; }
-      }
-      if (hitGap) break;
+    for (let i = 0; i < max; i++) {
+      const id = `cmt_${i.toString(16).padStart(8, "0")}`;
+      const c = await this._read("get_commitment", [id]);
+      if (!c?.commitment_id) break; // genuine empty slot → end of list
+      out.push(c);
+      await new Promise((r) => setTimeout(r, 250)); // stay under the rate limit
     }
     return out;
   }
