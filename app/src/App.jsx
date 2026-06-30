@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import {
-  usePrivy,
-  useLogin,
-  useWallets,
-} from "@privy-io/react-auth";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { usePrivy, useLogin, useWallets } from "@privy-io/react-auth";
 import Hermeneut from "./logic/Hermeneut.js";
-import Logo from "./components/Logo.jsx";
-import { GitHubIcon, XIcon } from "./components/Icons.jsx";
+import Nav from "./components/Nav.jsx";
+import HowItWorks from "./components/HowItWorks.jsx";
+import Features from "./components/Features.jsx";
+import Faq from "./components/Faq.jsx";
+import SiteFooter from "./components/SiteFooter.jsx";
 import CommitmentGraph from "./components/CommitmentGraph.jsx";
 import { NODE_COLOR } from "./components/nodeColors.js";
 
@@ -14,7 +13,7 @@ const CONTRACT = import.meta.env.VITE_CONTRACT_ADDRESS || "";
 const CHAIN = (import.meta.env.VITE_CHAIN || "bradbury").replace(/^testnet-/, "");
 const EXPLORER = "https://explorer-bradbury.genlayer.com";
 
-// Registration transaction hashes for the 5 seeded commitments (Bradbury).
+// Registration transaction hashes for the seeded commitments (Bradbury).
 const REG_TX = {
   cmt_00000000: "0xa87bbac456e802cd949919bbfee804b955a0b5ac88fa6844a6a136ef425b6210",
   cmt_00000001: "0xdc52ba1372f6fd6867163ae8957f0304088a71d1f0ac30574386830da9609cde",
@@ -23,36 +22,23 @@ const REG_TX = {
   cmt_00000004: "0xa5607a040113a6270d87b80e60df12278912abbef6b07077717b66d7fda7dee3",
 };
 
-const RAIL = [
-  "GENLAYER INTELLIGENT CONTRACT",
-  "LLM VALIDATOR CONSENSUS",
-  "EQUIVALENCE PRINCIPLE",
-  "RECURSIVE PRECEDENT GRAPH",
-  "EVM GHOST CONTRACTS",
-  "OPTIMISTIC DEMOCRACY",
-];
-
 function short(a) {
-  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
+  return a ? `${a.slice(0, 6)}\u2026${a.slice(-4)}` : "";
 }
 
-// Parse a human GEN amount (e.g. "1", "0.01", "2.5") to wei (BigInt string).
 function genToWei(v) {
   const s = String(v ?? "").trim();
-  if (!s || isNaN(Number(s))) return "0";
+  if (!s || Number.isNaN(Number(s))) return "0";
   const [whole, frac = ""] = s.split(".");
   const fracPadded = (frac + "0".repeat(18)).slice(0, 18);
-  const wei = BigInt(whole || "0") * 10n ** 18n + BigInt(fracPadded || "0");
-  return wei.toString();
+  return (BigInt(whole || "0") * 10n ** 18n + BigInt(fracPadded || "0")).toString();
 }
 
-// Format wei (number/string) back to a short GEN string for display.
 function weiToGen(v) {
   try {
     const wei = BigInt(v || 0);
     const whole = wei / 10n ** 18n;
-    const frac = (wei % 10n ** 18n)
-      .toString().padStart(18, "0").slice(0, 4).replace(/0+$/, "");
+    const frac = (wei % 10n ** 18n).toString().padStart(18, "0").slice(0, 4).replace(/0+$/, "");
     return frac ? `${whole}.${frac}` : `${whole}`;
   } catch {
     return "0";
@@ -83,8 +69,6 @@ export default function App() {
   const { login } = useLogin();
   const { wallets } = useWallets();
 
-  // Last-good snapshot cached in localStorage so the UI shows real data
-  // instantly and survives Bradbury rate-limit storms.
   const CACHE_KEY = `hermeneut_cache_${CONTRACT}`;
   const cached = (() => {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); }
@@ -98,15 +82,7 @@ export default function App() {
   const [refundOwed, setRefundOwed] = useState(0);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
-  const [rail, setRail] = useState(0);
   const [loading, setLoading] = useState(!cached);
-  const [showGuide, setShowGuide] = useState(
-    () => localStorage.getItem("hermeneut_guide_seen") !== "1",
-  );
-  function dismissGuide() {
-    localStorage.setItem("hermeneut_guide_seen", "1");
-    setShowGuide(false);
-  }
 
   const [reg, setReg] = useState({
     beneficiary: "",
@@ -131,18 +107,14 @@ export default function App() {
     setTimeout(() => setToast(""), 4500);
   }, []);
 
-  // Build a Hermeneut client. For reads we never need a signer; for writes
-  // we attach the Privy wallet's EIP-1193 provider as window.ethereum.
   const buildContract = useCallback(async () => {
     if (!CONTRACT) return null;
     const acct = address ? { address } : null;
     const h = new Hermeneut(CONTRACT, acct);
-    // Wire the connected Privy wallet provider for signing.
     const w = wallets?.[0];
     if (w?.getEthereumProvider) {
-      try {
-        window.ethereum = await w.getEthereumProvider();
-      } catch { /* ignore */ }
+      try { window.ethereum = await w.getEthereumProvider(); }
+      catch { /* ignore */ }
     }
     return h;
   }, [address, wallets]);
@@ -153,9 +125,6 @@ export default function App() {
     if (!c || refreshing.current) return;
     refreshing.current = true;
     try {
-      // Sequential to keep gen_call concurrency low (Bradbury rate-limits).
-      // Commitments first (the primary content); only overwrite state on
-      // success so a transient RPC failure never blanks the UI.
       const a = await c.listAllCommitments(64);
       let nextC = commitments, nextP = precedents, nextT = treasury;
       if (Array.isArray(a)) { setCommitments(a); nextC = a; }
@@ -167,7 +136,6 @@ export default function App() {
         const r = await c.getRefundOwed(address).catch(() => null);
         if (r !== null) setRefundOwed(Number(r) || 0);
       }
-      // Persist last-good snapshot.
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
           commitments: nextC, precedents: nextP, treasury: nextT,
@@ -179,6 +147,7 @@ export default function App() {
       refreshing.current = false;
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract, address, notify]);
 
   useEffect(() => {
@@ -189,11 +158,6 @@ export default function App() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
-
-  useEffect(() => {
-    const id = setInterval(() => setRail((r) => (r + 1) % RAIL.length), 2400);
-    return () => clearInterval(id);
-  }, []);
 
   const canRegister =
     contract && address && reg.beneficiary &&
@@ -247,7 +211,7 @@ export default function App() {
     setBusy(true);
     try {
       await contract.evaluateClaim(claimId);
-      notify("Claim evaluated.");
+      notify("Evaluation submitted. Validators are reaching consensus.");
       await refresh();
     } catch (e) {
       notify("Evaluate failed: " + (e?.shortMessage || e?.message || e));
@@ -269,325 +233,222 @@ export default function App() {
     }
   }
 
-  const explorer = CONTRACT
-    ? `https://explorer-bradbury.genlayer.com/address/${CONTRACT}`
-    : null;
+  const explorer = CONTRACT ? `${EXPLORER}/address/${CONTRACT}` : null;
+  const nC = String(commitments.length).padStart(2, "0");
+  const nP = String(precedents.length).padStart(2, "0");
 
   return (
-    <div className="min-h-screen bg-dark-blue text-off-blue">
-      {/* Header */}
-      <header className="border-b border-off-blue/10">
-        <div className="max-w-[1400px] mx-auto px-8 md:px-12 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3 select-none">
-            <Logo size={32} />
-            <span className="ht-mono-label">HERMENEUT</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* DOCS · GITHUB · X · SIGN IN */}
-            <a href="https://docs.genlayer.com" target="_blank" rel="noopener noreferrer"
-               className="ht-btn" title="Built on GenLayer — read the docs">
-              <Dots /><span className="hidden sm:inline">Built on GenLayer</span><span className="sm:hidden">Docs</span>
-            </a>
-            <a href="https://github.com/YoneCode/Hermeneut" target="_blank" rel="noopener noreferrer"
-               className="opacity-60 hover:opacity-100 flex items-center p-2 -m-2" title="GitHub" aria-label="GitHub repository">
-              <GitHubIcon size={18} />
-            </a>
-            <a href="https://x.com/YoneCode" target="_blank" rel="noopener noreferrer"
-               className="opacity-60 hover:opacity-100 flex items-center p-2 -m-2" title="X" aria-label="X profile">
-              <XIcon size={16} />
-            </a>
-            {ready && authenticated ? (
-              <div className="ht-mono-label tracking-ht-16 flex items-center gap-3">
-                <span className="opacity-50">WALLET</span>
-                <span>{short(address)}</span>
-                <button type="button" className="opacity-50 hover:opacity-100" onClick={logout}>
-                  LOG OUT
-                </button>
-              </div>
-            ) : (
-              <button type="button" className="ht-btn ht-btn--solid" disabled={!ready} onClick={login}>
-                <Dots />
-                <span>{ready ? "Sign in" : "Loading…"}</span>
-              </button>
-            )}
-            <button type="button"
-              className="ht-mono-label tracking-ht-16 opacity-50 hover:opacity-100"
-              title="How it works"
-              onClick={() => setShowGuide(true)}>
-              ?
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="ht-app" id="top">
+      <Nav ready={ready} authenticated={authenticated} address={address} login={login} logout={logout} />
 
-      {/* First-visit guide (dismissable, remembered) */}
-      {showGuide && (
-        <section className="border-b border-off-blue/10 bg-off-blue/[0.03]">
-          <div className="max-w-[1400px] mx-auto px-8 md:px-12 py-5">
-            <div className="flex items-start justify-between gap-6">
-              <div className="flex-1">
-                <div className="ht-mono-label tracking-ht-16 opacity-60 mb-3">
-                  HOW HERMENEUT WORKS
-                </div>
-                <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    ["01", "REGISTER", "Escrow capital against a natural-language obligation — e.g. \u201cthe team ships v2 by Q3.\u201d"],
-                    ["02", "CLAIM", "A beneficiary stakes GEN and submits evidence that the condition was met."],
-                    ["03", "CONSENSUS", "LLM validators judge the claim against precedent; the verdict becomes new on-chain case law."],
-                  ].map(([n, t, d]) => (
-                    <li key={n} className="flex gap-3">
-                      <span className="ht-tag h-fit">{n}</span>
-                      <div>
-                        <div className="ht-mono-label tracking-ht-16 mb-1">{t}</div>
-                        <p className="text-ht-14 opacity-60">{d}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              <button type="button"
-                className="ht-mono-label tracking-ht-16 opacity-60 hover:opacity-100 shrink-0"
-                onClick={dismissGuide}>
-                GOT IT ✕
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Hero — headline far-left, precedent graph to its right */}
-      <section className="max-w-[1400px] mx-auto px-8 md:px-12 pt-16 md:pt-24 pb-12 grid grid-cols-12 gap-8 items-center">
-        <div className="col-span-12 lg:col-span-5">
-          <span className="ht-tag mb-6 inline-flex">{CHAIN.toUpperCase()} · LIVE</span>
-          <h1 className="ht-display text-ht-32 md:text-ht-56 mb-8">
-            We govern<br />ambiguity through<br />recursive semantic<br />consensus.
+      {/* HERO — asymmetric: argument on the left, live graph on the right */}
+      <section className="ht-hero">
+        <div className="ht-hero__copy">
+          <span className="ht-tag ht-hero__pill">{CHAIN.toUpperCase()} testnet · live</span>
+          <h1 className="ht-display ht-h1">
+            Capital, bound to language.
           </h1>
-          <p className="text-ht-14 md:text-ht-16 font-light max-w-[60ch] opacity-60 mb-8">
-            Hermeneut escrows capital against natural-language obligations and resolves
-            them through a stake-weighted, precedent-informed common-law engine on
-            GenLayer Bradbury.
+          <p className="ht-lead ht-hero__lead">
+            HERMENEUT escrows funds against obligations written in plain English,
+            then settles them with a network of LLM validators that judge each
+            claim against everything they have ruled before.
           </p>
-          <div className="space-y-1 ht-mono-label tracking-ht-24">
-            {RAIL.map((l, i) => (
-              <div key={l} className="ht-rail-item" style={{ opacity: i === rail ? 1 : 0.5 }}>
-                <span>{l}</span>
-              </div>
-            ))}
+          <div className="ht-hero__cta">
+            <a href="#protocol" className="ht-btn ht-btn--solid"><Dots /><span>Launch the app</span></a>
+            <a href="#how" className="ht-btn"><Dots /><span>See how it works</span></a>
+          </div>
+          <div className="ht-hero__ticker ht-mono-label">
+            <span><b>{nC}</b> commitments</span>
+            <span><b>{nP}</b> precedents</span>
+            <span><b>{weiToGen(treasury)}</b> GEN escrowed</span>
           </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-7">
+        <div className="ht-hero__visual">
           <Box>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="ht-mono-label tracking-ht-16 opacity-60">05 · RECURSIVE PRECEDENT GRAPH</h2>
-              <span className="ht-mono-label tracking-ht-16 opacity-40">
-                {String(commitments.length).padStart(2, "0")} COMMITMENTS · {String(precedents.length).padStart(2, "0")} PRECEDENTS
-              </span>
+            <div className="ht-rowhead">
+              <h2 className="ht-mono-label">Recursive precedent graph</h2>
+              <span className="ht-mono-label ht-dim">{nC} commitments · {nP} precedents</span>
             </div>
-
-            {/* Static SVG graph of real on-chain state. */}
             <CommitmentGraph
               commitments={commitments}
               precedents={precedents}
               onPick={(c) => setCl((s) => ({ ...s, commitmentId: c.commitment_id }))}
             />
-
-            <div className="ht-mono-label tracking-ht-8 opacity-40 mt-2 flex flex-wrap gap-x-5 gap-y-1">
-              <span><span className="inline-block size-2 align-middle mr-1" style={{ background: NODE_COLOR.active }} /> COMMITMENT</span>
-              <span><span className="inline-block size-2 align-middle mr-1" style={{ background: NODE_COLOR.fulfilled }} /> FULFILLED</span>
-              <span><span className="inline-block size-2 align-middle mr-1" style={{ background: NODE_COLOR.unfulfilled }} /> UNFULFILLED</span>
-              <span><span className="inline-block size-2 align-middle mr-1" style={{ background: NODE_COLOR.precedent }} /> PRECEDENT</span>
-              <span>HOVER FOR DETAIL · CLICK A COMMITMENT TO STAGE A CLAIM</span>
+            <div className="ht-legend ht-mono-label">
+              <span><i style={{ background: NODE_COLOR.active }} /> commitment</span>
+              <span><i style={{ background: NODE_COLOR.fulfilled }} /> fulfilled</span>
+              <span><i style={{ background: NODE_COLOR.unfulfilled }} /> unfulfilled</span>
+              <span><i style={{ background: NODE_COLOR.precedent }} /> precedent</span>
             </div>
-
-            {precedents.length === 0 && (
-              <div className="ht-mono-label opacity-40 mt-3 text-center">
-                PRECEDENT NODES APPEAR AS CLAIMS ARE EVALUATED BY VALIDATOR CONSENSUS
-              </div>
-            )}
           </Box>
         </div>
       </section>
 
-      {/* Stat strip */}
-      <section className="border-y border-off-blue/10">
-        <div className="max-w-[1400px] mx-auto px-8 md:px-12 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <HowItWorks />
+      <Features />
+
+      {/* LIVE PROTOCOL — the working dApp */}
+      <section id="protocol" className="ht-section">
+        <div className="ht-section__head">
+          <h2 className="ht-display ht-h2">Interact with the live protocol.</h2>
+          <p className="ht-lead">
+            Real transactions on GenLayer Bradbury. Reads are free; registering,
+            claiming, and evaluating need a funded wallet.
+          </p>
+        </div>
+
+        <div className="ht-stats">
           {[
-            ["COMMITMENTS", String(commitments.length).padStart(2, "0"), ""],
-            ["PRECEDENTS", String(precedents.length).padStart(2, "0"), ""],
-            ["TREASURY", weiToGen(treasury), "GEN"],
-            ["REFUND OWED", weiToGen(refundOwed), "GEN"],
+            ["Commitments", nC, ""],
+            ["Precedents", nP, ""],
+            ["Treasury", weiToGen(treasury), "GEN"],
+            ["Refund owed", weiToGen(refundOwed), "GEN"],
           ].map(([label, value, unit]) => (
-            <div className="ht-row" key={label}>
-              <div className="ht-mono-label tracking-ht-16 opacity-60 mb-3">{label}</div>
+            <div className="ht-stat" key={label}>
+              <div className="ht-mono-label ht-dim">{label}</div>
               {loading && commitments.length === 0 ? (
-                <div className="text-ht-32 ht-display opacity-40 ht-pulse">··</div>
+                <div className="ht-display ht-stat__v ht-pulse">··</div>
               ) : (
-                <div className="text-ht-32 ht-display ht-tick" key={value}>{value}</div>
+                <div className="ht-display ht-stat__v ht-tick" key={value}>
+                  {value}{unit && <span className="ht-stat__u"> {unit}</span>}
+                </div>
               )}
-              {unit && <div className="ht-mono-label tracking-ht-16 mt-2 opacity-40">{unit}</div>}
             </div>
           ))}
         </div>
-      </section>
 
-      {/* Working area */}
-      <section className="max-w-[1400px] mx-auto px-8 md:px-12 py-12 grid grid-cols-12 gap-8">
-        <div className="col-span-12 lg:col-span-5 space-y-8">
-          {ready && !authenticated && (
-            <div className="ht-box ht-box--ghost px-4 py-3 flex items-center justify-between gap-4">
-              <span className="ht-corner-bl" />
-              <span className="ht-corner-br" />
-              <span className="ht-mono-label tracking-ht-16 opacity-70">
-                SIGN IN TO REGISTER OR CLAIM
-              </span>
-              <button type="button" className="ht-btn ht-btn--solid" onClick={login}>
-                <Dots /><span>Sign in</span>
-              </button>
-            </div>
-          )}
-          <Box>
-            <h2 className="ht-mono-label tracking-ht-16 opacity-60 mb-4">01 · REGISTER A COMMITMENT</h2>
-            <h3 className="ht-display text-ht-32 mb-6">Bind capital<br />to language.</h3>
-            <div className="space-y-2">
-              <input className="ht-input" placeholder="BENEFICIARY 0x…" aria-label="Beneficiary address"
-                value={reg.beneficiary} onChange={(e) => setReg({ ...reg, beneficiary: e.target.value })} />
-              <textarea className="ht-input" rows={3} placeholder="NATURAL-LANGUAGE CONDITION (≥ 8 CHARS)" aria-label="Natural-language condition"
-                value={reg.condition} onChange={(e) => setReg({ ...reg, condition: e.target.value })} />
-              <input className="ht-input" placeholder="DOMAIN HINT" aria-label="Domain hint"
-                value={reg.domainHint} onChange={(e) => setReg({ ...reg, domainHint: e.target.value })} />
-              <input className="ht-input" placeholder="EVM GHOST CONTRACT 0x…" aria-label="EVM ghost contract address"
-                value={reg.ghostContractAddress} onChange={(e) => setReg({ ...reg, ghostContractAddress: e.target.value })} />
-              <div className="grid grid-cols-2 gap-2">
-                <input className="ht-input" placeholder="EVM CHAIN" aria-label="EVM chain"
-                  value={reg.ghostChain} onChange={(e) => setReg({ ...reg, ghostChain: e.target.value })} />
-                <input className="ht-input" type="number" placeholder="TTL BLOCKS" aria-label="Time-to-live in blocks"
-                  value={reg.ttlBlocks} onChange={(e) => setReg({ ...reg, ttlBlocks: Number(e.target.value) })} />
-              </div>
-              <input className="ht-input" placeholder="LOCKED AMOUNT (GEN)" aria-label="Locked amount in GEN"
-                value={reg.ghostAmount} onChange={(e) => setReg({ ...reg, ghostAmount: e.target.value })} />
-              <div className="pt-2">
-                <button type="button" className="ht-btn ht-btn--solid" disabled={busy || !canRegister} onClick={onRegister}>
-                  <Dots /><span>{busy ? "Submitting…" : "Register commitment"}</span>
-                </button>
-              </div>
-            </div>
-          </Box>
+        {ready && !authenticated && (
+          <div className="ht-signin ht-box">
+            <span className="ht-corner-bl" /><span className="ht-corner-br" />
+            <span className="ht-mono-label">Sign in to register, claim, or evaluate</span>
+            <button type="button" className="ht-btn ht-btn--solid" onClick={login}>
+              <Dots /><span>Sign in</span>
+            </button>
+          </div>
+        )}
 
-          <Box>
-            <h2 className="ht-mono-label tracking-ht-16 opacity-60 mb-4">02 · SUBMIT A CLAIM</h2>
-            <h3 className="ht-display text-ht-32 mb-6">Stake your<br />evidence.</h3>
-            <div className="space-y-2">
-              <input className="ht-input" placeholder="COMMITMENT ID (CMT_…)" aria-label="Commitment ID"
-                value={cl.commitmentId} onChange={(e) => setCl({ ...cl, commitmentId: e.target.value })} />
-              <textarea className="ht-input" rows={3} placeholder="EVIDENCE TEXT" aria-label="Evidence text"
-                value={cl.evidenceText} onChange={(e) => setCl({ ...cl, evidenceText: e.target.value })} />
-              <input className="ht-input" placeholder="EVIDENCE URLS (COMMA-SEPARATED)" aria-label="Evidence URLs, comma-separated"
-                value={cl.evidenceUrls} onChange={(e) => setCl({ ...cl, evidenceUrls: e.target.value })} />
-              <input className="ht-input" placeholder="STAKE (GEN)" aria-label="Stake in GEN"
-                value={cl.stake} onChange={(e) => setCl({ ...cl, stake: e.target.value })} />
-              <div className="pt-2">
-                <button type="button" className="ht-btn ht-btn--solid" disabled={busy || !canClaim} onClick={onClaim}>
-                  <Dots /><span>{busy ? "Submitting…" : "Submit claim"}</span>
-                </button>
-              </div>
-            </div>
-          </Box>
-
-          <Box>
-            <h2 className="ht-mono-label tracking-ht-16 opacity-60 mb-4">03 · REFUNDS</h2>
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="ht-display text-ht-40">{weiToGen(refundOwed)}</div>
-                <div className="ht-mono-label tracking-ht-16 opacity-60 mt-1">GEN OWED</div>
-              </div>
-              <button type="button" className="ht-btn" disabled={busy || !address || refundOwed <= 0} onClick={onWithdraw}>
-                <Dots /><span>Withdraw</span>
-              </button>
-            </div>
-          </Box>
-        </div>
-
-        <div className="col-span-12 lg:col-span-7 space-y-8">
-          <Box>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="ht-mono-label tracking-ht-16 opacity-60">04 · COMMITMENTS</h2>
-              <button type="button" className="ht-mono-label tracking-ht-16 opacity-60 hover:opacity-100"
-                onClick={() => { setLoading(true); refresh(); }}>↻ REFRESH</button>
-            </div>
-            {loading && commitments.length === 0 && (
-              <div className="py-8">
-                <div className="ht-loading mb-4" />
-                <div className="ht-mono-label tracking-ht-16 opacity-40 text-center ht-pulse">
-                  READING ON-CHAIN STATE FROM BRADBURY…
+        <div className="ht-protocol">
+          <div className="ht-protocol__forms">
+            <Box>
+              <h3 className="ht-h3">Register a commitment</h3>
+              <p className="ht-form-hint">Escrow GEN against an obligation in plain language.</p>
+              <div className="ht-fields">
+                <input className="ht-input" placeholder="Beneficiary address (0x…)" aria-label="Beneficiary address"
+                  value={reg.beneficiary} onChange={(e) => setReg({ ...reg, beneficiary: e.target.value })} />
+                <textarea className="ht-input" rows={3} placeholder="Natural-language condition (at least 8 characters)" aria-label="Natural-language condition"
+                  value={reg.condition} onChange={(e) => setReg({ ...reg, condition: e.target.value })} />
+                <input className="ht-input" placeholder="Domain hint (e.g. dev-milestone)" aria-label="Domain hint"
+                  value={reg.domainHint} onChange={(e) => setReg({ ...reg, domainHint: e.target.value })} />
+                <input className="ht-input" placeholder="EVM ghost contract (0x…)" aria-label="EVM ghost contract address"
+                  value={reg.ghostContractAddress} onChange={(e) => setReg({ ...reg, ghostContractAddress: e.target.value })} />
+                <div className="ht-fields__row">
+                  <input className="ht-input" placeholder="EVM chain" aria-label="EVM chain"
+                    value={reg.ghostChain} onChange={(e) => setReg({ ...reg, ghostChain: e.target.value })} />
+                  <input className="ht-input" type="number" placeholder="TTL blocks" aria-label="Time-to-live in blocks"
+                    value={reg.ttlBlocks} onChange={(e) => setReg({ ...reg, ttlBlocks: Number(e.target.value) })} />
                 </div>
+                <input className="ht-input" placeholder="Locked amount (GEN)" aria-label="Locked amount in GEN"
+                  value={reg.ghostAmount} onChange={(e) => setReg({ ...reg, ghostAmount: e.target.value })} />
+                <button type="button" className="ht-btn ht-btn--solid" disabled={busy || !canRegister} onClick={onRegister}>
+                  <Dots /><span>{busy ? "Submitting" : "Register commitment"}</span>
+                </button>
               </div>
-            )}
-            {!loading && commitments.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="ht-mono-label tracking-ht-16 opacity-60 mb-2">NO COMMITMENTS YET</div>
-                <p className="text-ht-14 opacity-40 max-w-[40ch] mx-auto">
-                  Registered commitments appear here. Use “01 · Register a commitment”
-                  to escrow capital against a natural-language obligation.
-                </p>
+            </Box>
+
+            <Box>
+              <h3 className="ht-h3">Submit a claim</h3>
+              <p className="ht-form-hint">Stake GEN and argue the condition was met.</p>
+              <div className="ht-fields">
+                <input className="ht-input" placeholder="Commitment id (cmt_…)" aria-label="Commitment ID"
+                  value={cl.commitmentId} onChange={(e) => setCl({ ...cl, commitmentId: e.target.value })} />
+                <textarea className="ht-input" rows={3} placeholder="Evidence text" aria-label="Evidence text"
+                  value={cl.evidenceText} onChange={(e) => setCl({ ...cl, evidenceText: e.target.value })} />
+                <input className="ht-input" placeholder="Evidence URLs (comma-separated)" aria-label="Evidence URLs, comma-separated"
+                  value={cl.evidenceUrls} onChange={(e) => setCl({ ...cl, evidenceUrls: e.target.value })} />
+                <input className="ht-input" placeholder="Stake (GEN)" aria-label="Stake in GEN"
+                  value={cl.stake} onChange={(e) => setCl({ ...cl, stake: e.target.value })} />
+                <button type="button" className="ht-btn ht-btn--solid" disabled={busy || !canClaim} onClick={onClaim}>
+                  <Dots /><span>{busy ? "Submitting" : "Submit claim"}</span>
+                </button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {commitments.map((c, i) => (
-                  <div className="ht-row ht-enter" style={{ "--i": i }} key={c.commitment_id}>
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <code className="ht-mono-label tracking-ht-16">{c.commitment_id}</code>
-                      <span className="ht-tag">{(c.domain_hint || "general").toUpperCase()} · {(c.status || "").toUpperCase()}</span>
-                    </div>
-                    <p className="text-ht-14 mb-3">{c.condition}</p>
-                    <div className="ht-mono-label tracking-ht-8 opacity-60 flex flex-wrap gap-x-5 gap-y-1">
-                      <span>CREATOR {short(c.creator)}</span>
-                      <span>BENEFICIARY {short(c.beneficiary)}</span>
-                      <span>COHERENCE {(c.coherence_score_bps / 100).toFixed(1)}%</span>
-                      <span>LOCKED {weiToGen(c.ghost?.amount_wei)} GEN · {(c.ghost?.chain || "").toUpperCase()}</span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-5">
-                      {c.active_claim_id && (
-                        <button type="button" className="ht-mono-label tracking-ht-16 underline underline-offset-2 opacity-80 hover:opacity-100"
-                          onClick={() => onEvaluate(c.active_claim_id)}>
-                          ↳ EVALUATE ACTIVE CLAIM
-                        </button>
-                      )}
-                      {REG_TX[c.commitment_id] && (
-                        <a className="ht-mono-label tracking-ht-16 underline underline-offset-2 opacity-60 hover:opacity-100"
-                          href={`${EXPLORER}/tx/${REG_TX[c.commitment_id]}`}
-                          target="_blank" rel="noopener noreferrer">
-                          VIEW TX →
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            </Box>
+
+            <Box>
+              <h3 className="ht-h3">Refunds</h3>
+              <div className="ht-refund">
+                <div>
+                  <div className="ht-display ht-refund__v">{weiToGen(refundOwed)}</div>
+                  <div className="ht-mono-label ht-dim">GEN owed</div>
+                </div>
+                <button type="button" className="ht-btn" disabled={busy || !address || refundOwed <= 0} onClick={onWithdraw}>
+                  <Dots /><span>Withdraw refund</span>
+                </button>
               </div>
-            )}
-          </Box>
+            </Box>
+          </div>
+
+          <div className="ht-protocol__list">
+            <Box>
+              <div className="ht-rowhead">
+                <h3 className="ht-h3">Commitments</h3>
+                <button type="button" className="ht-mono-label ht-refresh"
+                  onClick={() => { setLoading(true); refresh(); }}>↻ Refresh</button>
+              </div>
+
+              {loading && commitments.length === 0 && (
+                <div className="ht-empty">
+                  <div className="ht-loading" />
+                  <div className="ht-mono-label ht-dim ht-pulse">Reading on-chain state from Bradbury</div>
+                </div>
+              )}
+
+              {!loading && commitments.length === 0 ? (
+                <div className="ht-empty">
+                  <div className="ht-mono-label">No commitments yet</div>
+                  <p className="ht-dim">Register one above to escrow capital against an obligation.</p>
+                </div>
+              ) : (
+                <div className="ht-clist">
+                  {commitments.map((c, i) => (
+                    <article className="ht-row ht-enter" style={{ "--i": i }} key={c.commitment_id}>
+                      <div className="ht-row__top">
+                        <code className="ht-mono-label">{c.commitment_id}</code>
+                        <span className="ht-tag">{(c.domain_hint || "general").toUpperCase()} · {(c.status || "").toUpperCase()}</span>
+                      </div>
+                      <p className="ht-row__cond">{c.condition}</p>
+                      <div className="ht-row__meta ht-mono-label ht-dim">
+                        <span>creator {short(c.creator)}</span>
+                        <span>beneficiary {short(c.beneficiary)}</span>
+                        <span>coherence {(c.coherence_score_bps / 100).toFixed(1)}%</span>
+                        <span>locked {weiToGen(c.ghost?.amount_wei)} GEN · {(c.ghost?.chain || "").toUpperCase()}</span>
+                      </div>
+                      <div className="ht-row__actions">
+                        {c.active_claim_id && (
+                          <button type="button" className="ht-link" onClick={() => onEvaluate(c.active_claim_id)}>
+                            Evaluate active claim →
+                          </button>
+                        )}
+                        {REG_TX[c.commitment_id] && (
+                          <a className="ht-link ht-dim" href={`${EXPLORER}/tx/${REG_TX[c.commitment_id]}`}
+                            target="_blank" rel="noopener noreferrer">View tx →</a>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </Box>
+          </div>
         </div>
       </section>
 
-      <footer className="sticky bottom-0 z-10 border-t border-off-blue/10 bg-dark-blue/80 backdrop-blur">
-        <div className="max-w-[1400px] mx-auto px-8 md:px-12 py-4 flex items-center justify-between">
-          <span className="ht-mono-label tracking-ht-16 opacity-50">
-            {short(CONTRACT)} · {CHAIN.toUpperCase()} · CHAIN 4221
-          </span>
-          {explorer && (
-            <a href={explorer} target="_blank" rel="noopener noreferrer"
-              className="ht-mono-label tracking-ht-16 opacity-70 hover:opacity-100">
-              VIEW ON EXPLORER →
-            </a>
-          )}
-        </div>
-      </footer>
+      <Faq />
+      <SiteFooter contract={CONTRACT} chain={CHAIN} explorer={explorer} />
 
       {toast && (
-        <output aria-live="polite"
-          className="ht-toast fixed bottom-20 right-6 ht-box ht-box--ghost px-4 py-2 ht-mono-label tracking-ht-16 z-50">
-          <span className="ht-corner-bl" />
-          <span className="ht-corner-br" />
+        <output aria-live="polite" className="ht-toast ht-box">
+          <span className="ht-corner-bl" /><span className="ht-corner-br" />
           {toast}
         </output>
       )}
