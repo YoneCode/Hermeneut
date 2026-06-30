@@ -109,14 +109,17 @@ export default function App() {
 
   const buildContract = useCallback(async () => {
     if (!CONTRACT) return null;
-    const acct = address ? { address } : null;
-    const h = new Hermeneut(CONTRACT, acct);
+    // Obtain the Privy wallet's EIP-1193 provider for signing, and make sure
+    // it is on GenLayer Bradbury (chain 4221) so writes are signed + sent on
+    // the right network. genlayer-js routes signing to this provider only when
+    // the account is passed as a STRING address.
+    let provider = null;
     const w = wallets?.[0];
-    if (w?.getEthereumProvider) {
-      try { window.ethereum = await w.getEthereumProvider(); }
-      catch { /* ignore */ }
+    if (w) {
+      try { await w.switchChain(4221); } catch { /* embedded wallet may already be on it */ }
+      try { provider = await w.getEthereumProvider(); } catch { /* ignore */ }
     }
-    return h;
+    return new Hermeneut(CONTRACT, address || null, provider);
   }, [address, wallets]);
 
   const refreshing = useRef(false);

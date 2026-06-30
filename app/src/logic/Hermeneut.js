@@ -14,9 +14,20 @@ function pick() {
  * `from` field).
  */
 export default class Hermeneut {
-  constructor(contractAddress, account = null) {
+  /**
+   * @param contractAddress  the deployed contract address
+   * @param account          the signer ADDRESS AS A STRING. genlayer-js only
+   *                         routes signing methods (eth_sendTransaction, …) to
+   *                         the wallet provider when `account` is a string
+   *                         (its `isAddress` check is `typeof account !== "object"`).
+   *                         Passing an object silently sends writes to the RPC,
+   *                         which cannot sign → "internal error".
+   * @param provider         the wallet's EIP-1193 provider (Privy) used to sign.
+   */
+  constructor(contractAddress, account = null, provider = null) {
     this.contractAddress = contractAddress;
     this.account = account;
+    this.provider = provider;
     this._buildClient();
   }
 
@@ -25,6 +36,7 @@ export default class Hermeneut {
     this.client = createClient({
       chain,
       ...(this.account ? { account: this.account } : {}),
+      ...(this.provider ? { provider: this.provider } : {}),
       ...(import.meta.env.VITE_RPC_URL
         ? { endpoint: import.meta.env.VITE_RPC_URL }
         : {}),
