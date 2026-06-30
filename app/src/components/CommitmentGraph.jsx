@@ -17,7 +17,7 @@ const statusColor = (s) => NODE_COLOR[s] || NODE_COLOR.void;
 export default function CommitmentGraph({ commitments = [], precedents = [], onPick }) {
   const wrapRef = useRef(null);
   const [hover, setHover] = useState(null);     // hovered node
-  const [pos, setPos] = useState({ x: 0, y: 0, flip: false });
+  const [pos, setPos] = useState({ x: 0, y: 0, flip: false, flipY: false });
 
   const cx = VW / 2, cy = VH / 2;
 
@@ -77,7 +77,7 @@ export default function CommitmentGraph({ commitments = [], precedents = [], onP
     const r = wrapRef.current?.getBoundingClientRect();
     if (!r) return;
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    setPos({ x, y, flip: x > r.width * 0.6 });
+    setPos({ x, y, flip: x > r.width * 0.6, flipY: y > r.height * 0.55 });
   }
 
   return (
@@ -141,7 +141,7 @@ export default function CommitmentGraph({ commitments = [], precedents = [], onP
           style={{
             left: pos.x + 14,
             top: pos.y + 14,
-            transform: pos.flip ? "translateX(-100%) translateX(-28px)" : "none",
+            transform: `${pos.flip ? "translateX(-100%) translateX(-28px)" : ""} ${pos.flipY ? "translateY(-100%) translateY(-28px)" : ""}`.trim() || "none",
           }}
         >
           <span className="ht-corner-bl" />

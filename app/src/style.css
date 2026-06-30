@@ -647,9 +647,11 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--ht-nav-h) + 16px)
 .ht-h1 { font-size: clamp(2.75rem, 6.4vw, 5.25rem); }
 
 /* HERO band with dotted-grid + radial glow background */
-.ht-hero-band { position: relative; overflow: hidden; border-bottom: 1px solid var(--c-off-a10); }
+.ht-hero-band { position: relative; border-bottom: 1px solid var(--c-off-a10); }
+/* The grid background is clipped to itself so removing overflow on the band
+ * (which would otherwise clip the graph's hover tooltip) is safe. */
 .ht-hero-band__bg {
-  position: absolute; inset: 0; pointer-events: none; opacity: 0.7;
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.7; overflow: hidden;
   background:
     radial-gradient(58% 48% at 72% 28%, rgba(213, 224, 255, 0.12), transparent 70%),
     linear-gradient(var(--c-off-a05) 1px, transparent 1px) 0 0 / 100% 58px,
