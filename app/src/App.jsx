@@ -8,6 +8,7 @@ import Faq from "./components/Faq.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import CommitmentGraph from "./components/CommitmentGraph.jsx";
 import TxModal from "./components/TxModal.jsx";
+import { CopyIcon } from "./components/Icons.jsx";
 import { NODE_COLOR } from "./components/nodeColors.js";
 
 const CONTRACT = import.meta.env.VITE_CONTRACT_ADDRESS || "";
@@ -205,6 +206,23 @@ export default function App() {
   const onEvaluate = (claimId) => runTx("Evaluate claim", (op) => contract.evaluateClaim(claimId, op));
   const onWithdraw = () => runTx("Withdraw refund", (op) => contract.withdrawRefund(op));
 
+  // Make commitment ids easy to use: copy to clipboard, or stage straight into
+  // the claim form (fill the id, scroll to it, focus it).
+  const claimIdRef = useRef(null);
+  const copyId = useCallback((id) => {
+    navigator.clipboard?.writeText(id)
+      .then(() => notify(`Copied ${id}`))
+      .catch(() => notify(id));
+  }, [notify]);
+  const stageClaim = useCallback((id) => {
+    setCl((s) => ({ ...s, commitmentId: id }));
+    notify(`${id} staged in the claim form`);
+    requestAnimationFrame(() => {
+      claimIdRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => claimIdRef.current?.focus(), 350);
+    });
+  }, [notify]);
+
   const explorer = CONTRACT ? `${EXPLORER}/address/${CONTRACT}` : null;
   const nC = String(commitments.length).padStart(2, "0");
   const nP = String(precedents.length).padStart(2, "0");
@@ -332,9 +350,12 @@ export default function App() {
 
               <Box>
                 <h3 className="ht-h3">Submit a claim</h3>
-                <p className="ht-form-hint">Stake GEN and argue the condition was met.</p>
+                <p className="ht-form-hint">
+                  Stake GEN and argue the condition was met. Pick a commitment on
+                  the right with “Claim this”, or paste its id below.
+                </p>
                 <div className="ht-fields">
-                  <input className="ht-input" placeholder="Commitment id (cmt_…)" aria-label="Commitment ID"
+                  <input ref={claimIdRef} className="ht-input" placeholder="Commitment id (cmt_…)" aria-label="Commitment ID"
                     value={cl.commitmentId} onChange={(e) => setCl({ ...cl, commitmentId: e.target.value })} />
                   <textarea className="ht-input" rows={3} placeholder="Evidence text" aria-label="Evidence text"
                     value={cl.evidenceText} onChange={(e) => setCl({ ...cl, evidenceText: e.target.value })} />
@@ -387,7 +408,11 @@ export default function App() {
                     {commitments.map((c, i) => (
                       <article className="ht-row ht-enter" style={{ "--i": i }} key={c.commitment_id}>
                         <div className="ht-row__top">
-                          <code className="ht-mono-label">{c.commitment_id}</code>
+                          <button type="button" className="ht-id" title="Copy commitment id"
+                            onClick={() => copyId(c.commitment_id)}>
+                            <code className="ht-mono-label">{c.commitment_id}</code>
+                            <CopyIcon />
+                          </button>
                           <span className="ht-tag">{(c.domain_hint || "general").toUpperCase()} · {(c.status || "").toUpperCase()}</span>
                         </div>
                         <p className="ht-row__cond">{c.condition}</p>
@@ -398,6 +423,9 @@ export default function App() {
                           <span>locked {weiToGen(c.ghost?.amount_wei)} GEN · {(c.ghost?.chain || "").toUpperCase()}</span>
                         </div>
                         <div className="ht-row__actions">
+                          <button type="button" className="ht-link ht-link--accent" onClick={() => stageClaim(c.commitment_id)}>
+                            Claim this →
+                          </button>
                           {c.active_claim_id && (
                             <button type="button" className="ht-link" onClick={() => onEvaluate(c.active_claim_id)}>
                               Evaluate active claim →

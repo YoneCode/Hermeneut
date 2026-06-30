@@ -725,3 +725,18 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--ht-nav-h) + 16px)
   .ht-spinner { animation-duration: 1.6s; }
   .ht-hero-band__bg { display: none; }
 }
+
+/* Copy-able commitment id + primary "claim this" action */
+.ht-id {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  background: none; border: 1px solid var(--c-off-a10);
+  padding: 0.28rem 0.5rem; color: var(--c-off); cursor: pointer;
+  transition: border-color 0.15s var(--ease-out-quart), background-color 0.15s var(--ease-out-quart);
+}
+.ht-id:hover { border-color: var(--c-off-a20); background: var(--c-off-a05); }
+.ht-id svg { opacity: 0.55; transition: opacity 0.15s; }
+.ht-id:hover svg { opacity: 1; }
+.ht-link--accent { color: var(--c-off); font-weight: 700; }
+.ht-link--accent:hover { opacity: 0.85; }
+/* When an id has been staged, draw attention to the claim field briefly */
+.ht-input:focus { box-shadow: 0 0 0 2px var(--c-off-a20); }
