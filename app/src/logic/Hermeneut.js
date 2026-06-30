@@ -29,6 +29,12 @@ export default class Hermeneut {
         ? { endpoint: import.meta.env.VITE_RPC_URL }
         : {}),
     });
+    // Bradbury's gas estimator under-shoots value-bearing / non-deterministic
+    // writes (submit_claim, evaluate_claim): the internal genvm sub-call runs
+    // out of gas and the EVM tx reverts. Force a high fixed gas limit so the
+    // consensus contract always has enough headroom. Reads (gen_call) are
+    // unaffected — they don't estimate gas.
+    this.client.estimateTransactionGas = async () => 12_000_000n;
   }
 
   updateAccount(account) {

@@ -17,7 +17,7 @@ and the verdict itself becomes precedent.
 
 | | |
 |---|---|
-| Contract | [`0x274837A29Cc71E1CD3304d2D7aB3BC08168473AE`](https://explorer-bradbury.genlayer.com/address/0x274837A29Cc71E1CD3304d2D7aB3BC08168473AE) |
+| Contract | [`0x279C77384db0733165aC21D6D32DE2da986E5082`](https://explorer-bradbury.genlayer.com/address/0x279C77384db0733165aC21D6D32DE2da986E5082) |
 | Chain | GenLayer Bradbury (chain id `4221`) |
 | Explorer | https://explorer-bradbury.genlayer.com |
 | Frontend | React 18 + Vite, deployed on Cloudflare Pages |
@@ -52,15 +52,21 @@ and the verdict itself becomes precedent.
 
 ## Example on-chain transactions
 
-Five commitments registered on the live contract (open in the Bradbury explorer):
+Commitments registered on the live contract, plus one full resolution cycle
+(register → claim → evaluate → precedent). Open them in the Bradbury explorer:
 
-| Commitment | Domain | Tx |
+| Commitment | Domain | Register tx |
 |---|---|---|
-| `cmt_00000000` | dev-milestone | [`0x54113145…65ee43`](https://explorer-bradbury.genlayer.com/tx/0x54113145c7ba95cb0f47e09b6a1bfd95051e18296cdd2935de23ad0cb065ee43) |
-| `cmt_00000001` | grant-program | [`0x3751d7ff…4f87dc`](https://explorer-bradbury.genlayer.com/tx/0x3751d7ff8e8bb780976b57606cc474d8a5819f6f30067b1609de735a794f87dc) |
-| `cmt_00000002` | security-audit | [`0x520e4990…bcf47e1`](https://explorer-bradbury.genlayer.com/tx/0x520e499074a7b9afd800e6a6659e7bf9d471ae25cdf5a13b789d96417bcf47e1) |
-| `cmt_00000003` | defi-risk | [`0x90244f39…a790893`](https://explorer-bradbury.genlayer.com/tx/0x90244f390eae7d8366fd9481c4f962b6ef8158de4a646081cae805c57a790893) |
-| `cmt_00000004` | governance | [`0x5d28f2d5…1743eb`](https://explorer-bradbury.genlayer.com/tx/0x5d28f2d5f0c6d4ee423960fc31611ef44c7489e41ed6a8fa4f3a7caa381743eb) |
+| `cmt_00000000` | ecosystem | [`0xa87bbac4…25b6210`](https://explorer-bradbury.genlayer.com/tx/0xa87bbac456e802cd949919bbfee804b955a0b5ac88fa6844a6a136ef425b6210) |
+| `cmt_00000001` | dev-milestone | [`0xdc52ba13…9609cde`](https://explorer-bradbury.genlayer.com/tx/0xdc52ba1372f6fd6867163ae8957f0304088a71d1f0ac30574386830da9609cde) |
+| `cmt_00000002` | grant-program | [`0xce5daeac…0b8c4e12`](https://explorer-bradbury.genlayer.com/tx/0xce5daeac5cee1d552b6c6570e851ab7c0b47885abb7262b868cae2dd0b8c4e12) |
+| `cmt_00000003` | security-audit | [`0xef91b9ed…d24df7dbd`](https://explorer-bradbury.genlayer.com/tx/0xef91b9ed0298e233187ffdab5c5a25fe4148e3362df7491b8658686d24df7dbd) |
+| `cmt_00000004` | governance | [`0xa5607a04…fda7dee3`](https://explorer-bradbury.genlayer.com/tx/0xa5607a040113a6270d87b80e60df12278912abbef6b07077717b66d7fda7dee3) |
+
+Resolution of `cmt_00000000`: claim `clm_00000000` → `evaluate_claim`
+([`0xad0b9a8d…420555a8`](https://explorer-bradbury.genlayer.com/tx/0xad0b9a8dea5f0feebf8fdd5bc3211eef3b6c811d302c35597d149921420555a8))
+reached validator consensus (`unfulfilled`, 60% confidence) and wrote precedent
+`prc_00000000` into the Recursive Precedent Graph.
 
 ---
 
@@ -140,7 +146,7 @@ npm run preview               # serve the build locally
 `app/.env`:
 
 ```
-VITE_CONTRACT_ADDRESS=0x274837A29Cc71E1CD3304d2D7aB3BC08168473AE
+VITE_CONTRACT_ADDRESS=0x279C77384db0733165aC21D6D32DE2da986E5082
 VITE_CHAIN=bradbury
 VITE_PRIVY_APP_ID=<your-privy-app-id>
 ```

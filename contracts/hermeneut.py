@@ -812,6 +812,11 @@ class Hermeneut(gl.Contract):
                     try:
                         web = gl.nondet.web.get(u)
                         body = getattr(web, "body", "") or ""
+                        # web.get().body is bytes in the genvm runtime — decode
+                        # before joining, else "".join() raises TypeError.
+                        if isinstance(body, (bytes, bytearray)):
+                            body = bytes(body).decode("utf-8", "replace")
+                        body = str(body)
                         if body:
                             chunks.append(body[:1500])
                     except Exception:
