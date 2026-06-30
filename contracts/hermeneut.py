@@ -795,22 +795,29 @@ class Hermeneut(gl.Contract):
                 tier=tier_hint,
             )
 
-        def _fetch_evidence() -> str:
-            if not urls:
-                return ""
-            chunks = []
-            for u in urls[:max_urls]:
-                try:
-                    web = gl.nondet.web.get(u)
-                    body = getattr(web, "body", "") or ""
-                    if body:
-                        chunks.append(body[:1500])
-                except Exception:
-                    continue
-            return "\n\n".join(chunks)
-
         def evaluate() -> str:
-            """Single LLM call producing a canonical JSON judgment."""
+            """Single LLM call producing a canonical JSON judgment.
+
+            The web-fetch helper is declared INSIDE evaluate() so that every
+            non-deterministic operation (web.get + exec_prompt) is contained
+            within the single closure handed to the consensus runner. genvm
+            requires this — a nondet helper defined as a sibling closure does
+            not pass genvm-lint.
+            """
+            def _fetch_evidence() -> str:
+                if not urls:
+                    return ""
+                chunks = []
+                for u in urls[:max_urls]:
+                    try:
+                        web = gl.nondet.web.get(u)
+                        body = getattr(web, "body", "") or ""
+                        if body:
+                            chunks.append(body[:1500])
+                    except Exception:
+                        continue
+                return "\n\n".join(chunks)
+
             extra = _fetch_evidence()
             user_prompt = _build_prompt(extra)
             raw = gl.nondet.exec_prompt(user_prompt)

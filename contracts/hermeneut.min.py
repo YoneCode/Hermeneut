@@ -434,21 +434,21 @@ class Hermeneut(gl.Contract):
         def _build_prompt(extra: str) -> str:
             return EVAL_USER_TEMPLATE.format(system=sys_prompt, condition=condition, evidence=evidence + ('\n\n[FETCHED]\n' + extra if extra else ''), urls='\n'.join(urls) if urls else '(none)', precedents=precedents_block, tier=tier_hint)
 
-        def _fetch_evidence() -> str:
-            if not urls:
-                return ''
-            chunks = []
-            for u in urls[:max_urls]:
-                try:
-                    web = gl.nondet.web.get(u)
-                    body = getattr(web, 'body', '') or ''
-                    if body:
-                        chunks.append(body[:1500])
-                except Exception:
-                    continue
-            return '\n\n'.join(chunks)
-
         def evaluate() -> str:
+
+            def _fetch_evidence() -> str:
+                if not urls:
+                    return ''
+                chunks = []
+                for u in urls[:max_urls]:
+                    try:
+                        web = gl.nondet.web.get(u)
+                        body = getattr(web, 'body', '') or ''
+                        if body:
+                            chunks.append(body[:1500])
+                    except Exception:
+                        continue
+                return '\n\n'.join(chunks)
             extra = _fetch_evidence()
             user_prompt = _build_prompt(extra)
             raw = gl.nondet.exec_prompt(user_prompt)
