@@ -659,7 +659,6 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(var(--ht-nav-h) + 16px)
 }
 .ht-hero {
   position: relative;
-  max-width: none; margin: 0; padding-inline: 0;
   padding-block: clamp(3.5rem, 8vw, 7rem);
   display: grid; grid-template-columns: 1fr; gap: clamp(2.5rem, 5vw, 4rem); align-items: center;
 }
