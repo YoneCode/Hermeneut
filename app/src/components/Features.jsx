@@ -33,28 +33,30 @@ const FEATURES = [
 
 export default function Features() {
   return (
-    <section id="features" className="ht-section">
-      <div className="ht-section__head">
-        <h2 className="ht-display ht-h2">Not a vote. A judgment.</h2>
-        <p className="ht-lead">
-          Oracles report numbers. HERMENEUT interprets language, and remembers
-          how it ruled last time.
-        </p>
-      </div>
+    <section id="features" className="ht-band">
+      <div className="ht-wrap">
+        <div className="ht-section__head" data-reveal>
+          <h2 className="ht-h2">Not a vote. A judgment.</h2>
+          <p className="ht-lead">
+            Oracles report numbers. HERMENEUT interprets language, and remembers
+            how it ruled last time.
+          </p>
+        </div>
 
-      <div className="ht-features">
-        <article className="ht-feature ht-feature--lead ht-box">
-          <span className="ht-corner-bl" /><span className="ht-corner-br" />
-          <h3 className="ht-display ht-h3">{LEAD.title}</h3>
-          <p>{LEAD.body}</p>
-        </article>
-        {FEATURES.map((f) => (
-          <article key={f.title} className="ht-feature ht-box">
+        <div className="ht-features" data-reveal>
+          <article className="ht-feature ht-feature--lead ht-box">
             <span className="ht-corner-bl" /><span className="ht-corner-br" />
-            <h3 className="ht-h3">{f.title}</h3>
-            <p>{f.body}</p>
+            <h3 className="ht-h3">{LEAD.title}</h3>
+            <p>{LEAD.body}</p>
           </article>
-        ))}
+          {FEATURES.map((f) => (
+            <article key={f.title} className="ht-feature ht-box">
+              <span className="ht-corner-bl" /><span className="ht-corner-br" />
+              <h3 className="ht-h3">{f.title}</h3>
+              <p>{f.body}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

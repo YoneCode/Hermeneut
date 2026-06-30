@@ -132,14 +132,20 @@ export default class Hermeneut {
     });
   }
 
-  async _write(functionName, args = [], value = 0n) {
+  async _write(functionName, args = [], value = 0n, onProgress) {
+    onProgress?.({ phase: "signing" });
     const txHash = await this.client.writeContract({
       address: this.contractAddress,
       functionName,
       args,
       value: BigInt(value || 0n),
     });
-    return this._wait(txHash);
+    // Broadcast succeeded; the tx is now in consensus. Surface the hash so the
+    // UI can link to the explorer while validators settle it.
+    onProgress?.({ phase: "confirming", hash: txHash });
+    const receipt = await this._wait(txHash);
+    onProgress?.({ phase: "success", hash: txHash });
+    return receipt;
   }
 
   async registerCommitment({
@@ -153,7 +159,7 @@ export default class Hermeneut {
     ghostTimeoutBlockEvm,
     ttlBlocks,
     registrationFeeWei = 0n,
-  }) {
+  }, onProgress) {
     return this._write("register_commitment", [
       beneficiary,
       condition,
@@ -164,16 +170,16 @@ export default class Hermeneut {
       ghostTokenAddress,
       BigInt(ghostTimeoutBlockEvm),
       BigInt(ttlBlocks),
-    ], registrationFeeWei);
+    ], registrationFeeWei, onProgress);
   }
 
-  submitClaim({ commitmentId, evidenceText, evidenceUrls = [], stakeWei }) {
-    return this._write("submit_claim", [commitmentId, evidenceText, evidenceUrls], stakeWei);
+  submitClaim({ commitmentId, evidenceText, evidenceUrls = [], stakeWei }, onProgress) {
+    return this._write("submit_claim", [commitmentId, evidenceText, evidenceUrls], stakeWei, onProgress);
   }
 
-  evaluateClaim(claimId)     { return this._write("evaluate_claim", [claimId]); }
-  escalateClaim(claimId)     { return this._write("escalate_claim", [claimId]); }
-  withdrawRefund()           { return this._write("withdraw_refund"); }
-  withdrawCitationFees(pid)  { return this._write("withdraw_citation_fees", [pid]); }
-  cancelCommitment(cid)      { return this._write("cancel_commitment", [cid]); }
+  evaluateClaim(claimId, onProgress)     { return this._write("evaluate_claim", [claimId], 0n, onProgress); }
+  escalateClaim(claimId, onProgress)     { return this._write("escalate_claim", [claimId], 0n, onProgress); }
+  withdrawRefund(onProgress)             { return this._write("withdraw_refund", [], 0n, onProgress); }
+  withdrawCitationFees(pid, onProgress)  { return this._write("withdraw_citation_fees", [pid], 0n, onProgress); }
+  cancelCommitment(cid, onProgress)      { return this._write("cancel_commitment", [cid], 0n, onProgress); }
 }

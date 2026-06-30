@@ -32,25 +32,27 @@ const QA = [
 
 export default function Faq() {
   return (
-    <section id="faq" className="ht-section">
-      <div className="ht-section__head">
-        <h2 className="ht-display ht-h2">Questions worth asking.</h2>
-        <p className="ht-lead">
-          How the protocol behaves, what it costs you, and what it does not
-          yet promise.
-        </p>
-      </div>
+    <section id="faq" className="ht-band ht-band--alt">
+      <div className="ht-wrap">
+        <div className="ht-section__head" data-reveal>
+          <h2 className="ht-h2">Questions worth asking.</h2>
+          <p className="ht-lead">
+            How the protocol behaves, what it costs you, and what it does not
+            yet promise.
+          </p>
+        </div>
 
-      <div className="ht-faq">
-        {QA.map((item) => (
-          <details key={item.q} className="ht-faq__item">
-            <summary>
-              <span>{item.q}</span>
-              <span className="ht-faq__sign" aria-hidden />
-            </summary>
-            <p>{item.a}</p>
-          </details>
-        ))}
+        <div className="ht-faq" data-reveal>
+          {QA.map((item) => (
+            <details key={item.q} className="ht-faq__item">
+              <summary>
+                <span>{item.q}</span>
+                <span className="ht-faq__sign" aria-hidden />
+              </summary>
+              <p>{item.a}</p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );
